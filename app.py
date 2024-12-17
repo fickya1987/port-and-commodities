@@ -61,10 +61,12 @@ if uploaded_file is not None:
     selected_pelabuhan = st.multiselect("Pilih Pelabuhan", df['Pelabuhan'].unique(), default=df['Pelabuhan'].unique())
     selected_jenis = st.multiselect("Pilih Jenis Komoditas", df['JenisKomoditi'].unique(), default=df['JenisKomoditi'].unique())
     selected_kategori = st.multiselect("Pilih Kategori", df['Kategori'].unique(), default=df['Kategori'].unique())
+    selected_komoditi = st.multiselect("Pilih Komoditi", df['Komoditi'].unique(), default=df['Komoditi'].unique())
 
     filtered_data = df[(df['Pelabuhan'].isin(selected_pelabuhan)) &
                        (df['JenisKomoditi'].isin(selected_jenis)) &
-                       (df['Kategori'].isin(selected_kategori))]
+                       (df['Kategori'].isin(selected_kategori)) &
+                       (df['Komoditi'].isin(selected_komoditi))]
 
     st.subheader("Data Terfilter")
     st.dataframe(filtered_data)
@@ -77,7 +79,7 @@ if uploaded_file is not None:
         "DomestikBongkar2020", "DomestikMuat2020", "Impor2020", "Ekspor2020"
     ]
 
-    melted_data = filtered_data.melt(id_vars=['Pelabuhan', 'JenisKomoditi', 'Kategori'], 
+    melted_data = filtered_data.melt(id_vars=['Pelabuhan', 'JenisKomoditi', 'Kategori', 'Komoditi'], 
                                      value_vars=columns_to_melt, 
                                      var_name='Tahun', value_name='Jumlah')
 
@@ -89,17 +91,17 @@ if uploaded_file is not None:
     if selected_chart == "Bar Chart":
         st.plotly_chart(
             px.bar(melted_data, x="Tahun", y="Jumlah", color="Pelabuhan", 
-                   facet_col="JenisKomoditi", title="Perbandingan Data Ekspor/Impor dari 2020-2023")
+                   facet_col="Komoditi", title="Perbandingan Data Ekspor/Impor dari 2020-2023")
         )
     elif selected_chart == "Line Chart":
         st.plotly_chart(
             px.line(melted_data, x="Tahun", y="Jumlah", color="Pelabuhan", 
-                    line_group="JenisKomoditi", title="Tren Data Ekspor/Impor dari 2020-2023")
+                    line_group="Komoditi", title="Tren Data Ekspor/Impor dari 2020-2023")
         )
     elif selected_chart == "Scatter Plot":
         st.plotly_chart(
             px.scatter(melted_data, x="Tahun", y="Jumlah", color="Pelabuhan", 
-                       size="Jumlah", facet_col="Kategori", title="Distribusi Data Ekspor/Impor per Tahun")
+                       size="Jumlah", facet_col="Komoditi", title="Distribusi Data Ekspor/Impor per Tahun")
         )
 
     # GPT-4o Integration
