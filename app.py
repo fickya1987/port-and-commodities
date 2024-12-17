@@ -21,9 +21,12 @@ def load_data(uploaded_file):
         st.error("Format file tidak didukung. Silakan unggah file CSV atau Excel.")
         return None
     
-    # Konversi semua kolom numerik otomatis
+    # Konversi kolom numerik otomatis
     for col in df.columns:
-        df[col] = pd.to_numeric(df[col], errors='coerce')
+        try:
+            df[col] = pd.to_numeric(df[col], errors='ignore')
+        except:
+            pass
     return df
 
 # App Title
@@ -150,6 +153,7 @@ if 'fig' in locals():
     st.plotly_chart(fig, use_container_width=True)
 else:
     st.warning("Visualisasi tidak dapat ditampilkan. Silakan periksa pengaturan Anda.")
+
 
 
 
