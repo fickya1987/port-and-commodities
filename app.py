@@ -14,20 +14,12 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 @st.cache_data
 def load_data(uploaded_file):
     if uploaded_file.name.endswith('.csv'):
-        df = pd.read_csv(uploaded_file)
+        return pd.read_csv(uploaded_file)
     elif uploaded_file.name.endswith('.xlsx'):
-        df = pd.read_excel(uploaded_file)
+        return pd.read_excel(uploaded_file)
     else:
         st.error("Format file tidak didukung. Silakan unggah file CSV atau Excel.")
         return None
-    
-    # Konversi kolom numerik otomatis
-    for col in df.columns:
-        try:
-            df[col] = pd.to_numeric(df[col], errors='ignore')
-        except:
-            pass
-    return df
 
 # App Title
 st.title("Visualisasi dan Analisis Data Komoditas Pelabuhan")
@@ -46,18 +38,18 @@ st.sidebar.header("Pengaturan Visualisasi")
 # Pilihan Pelabuhan, JenisKomoditi, dan Kategori
 pelabuhan_filter = st.sidebar.multiselect(
     "Filter Pelabuhan",
-    options=data['Pelabuhan'].dropna().unique(),
-    default=data['Pelabuhan'].dropna().unique()
+    options=data['Pelabuhan'].unique(),
+    default=data['Pelabuhan'].unique()
 )
 jenis_komoditi_filter = st.sidebar.multiselect(
     "Filter Jenis Komoditi",
-    options=data['JenisKomoditi'].dropna().unique(),
-    default=data['JenisKomoditi'].dropna().unique()
+    options=data['JenisKomoditi'].unique(),
+    default=data['JenisKomoditi'].unique()
 )
 kategori_filter = st.sidebar.multiselect(
     "Filter Kategori",
-    options=data['Kategori'].dropna().unique(),
-    default=data['Kategori'].dropna().unique()
+    options=data['Kategori'].unique(),
+    default=data['Kategori'].unique()
 )
 
 # Filter Data
@@ -71,7 +63,7 @@ filtered_data = data[
 chart_type = st.sidebar.selectbox(
     "Pilih Jenis Visualisasi", 
     [
-        "Bar Chart", "Line Chart", "Pie Chart", "Treemap", "Bubble Chart", "Heatmap", "Sunburst Chart", "Radar Chart"
+        "Bar Chart", "Line Chart", "Pie Chart", "Treemap", "Bubble Chart", "Heatmap", "Sunburst Chart", "Scatter Matrix", "Density Contour", "Radar Chart"
     ]
 )
 
@@ -102,25 +94,22 @@ if chart_type == "Bar Chart":
         title="Bar Chart Berdasarkan Pelabuhan dan Kategori",
         text_auto=True
     )
-elif chart_type == "Radar Chart":
-    categories = ["DomestikBongkar2023", "DomestikMuat2023", "Impor2023", "Ekspor2023"]
-    radar_data = filtered_data.groupby('Pelabuhan')[categories].mean().reset_index()
-
-    fig = go.Figure()
-    for _, row in radar_data.iterrows():
-        fig.add_trace(go.Scatterpolar(
-            r=row[categories].values,
-            theta=categories,
-            fill='toself',
-            name=row['Pelabuhan']
-        ))
-    fig.update_layout(
-        polar=dict(radialaxis=dict(visible=True, range=[0, radar_data[categories].max().max()])),
-        title="Radar Chart Berdasarkan Kategori Data untuk Setiap Pelabuhan"
+elif chart_type == "Line Chart":
+    fig = px.line(
+        filtered_data, 
+        x="Komoditi", 
+        y=y_axis, 
+        color="Pelabuhan", 
+        markers=True, 
+        title="Line Chart Berdasarkan Pelabuhan"
     )
-elif chart_type == "Heatmap":
-    heatmap_data = filtered_data.pivot_table(index="Pelabuhan", columns="Kategori", values=y_axis, aggfunc='sum', fill_value=0)
-    fig = px.imshow(heatmap_data, title="Heatmap Berdasarkan Pelabuhan dan Kategori")
+elif chart_type == "Pie Chart":
+    fig = px.pie(
+        filtered_data, 
+        names="Pelabuhan", 
+        values=y_axis, 
+        title="Distribusi Data Berdasarkan Pelabuhan"
+    )
 elif chart_type == "Treemap":
     fig = px.treemap(
         filtered_data, 
@@ -138,6 +127,25 @@ elif chart_type == "Bubble Chart":
         hover_data=["Kategori"],
         title="Bubble Chart Berdasarkan Pelabuhan dan Kategori"
     )
+elif chart_type == "Radar Chart":
+    categories = ["DomestikBongkar2023", "DomestikMuat2023", "Impor2023", "Ekspor2023"]
+    radar_data = filtered_data.groupby('Pelabuhan')[categories].sum().reset_index()
+
+    fig = go.Figure()
+    for _, row in radar_data.iterrows():
+        fig.add_trace(go.Scatterpolar(
+            r=row[categories].values,
+            theta=categories,
+            fill='toself',
+            name=row['Pelabuhan']
+        ))
+    fig.update_layout(
+        polar=dict(radialaxis=dict(visible=True)),
+        title="Radar Chart Berdasarkan Kategori Data untuk Setiap Pelabuhan"
+    )
+elif chart_type == "Heatmap":
+    pivot_data = filtered_data.pivot_table(index="Pelabuhan", columns="Kategori", values=y_axis, aggfunc='sum', fill_value=0)
+    fig = px.imshow(pivot_data, title="Heatmap Berdasarkan Pelabuhan dan Kategori")
 elif chart_type == "Sunburst Chart":
     fig = px.sunburst(
         filtered_data, 
@@ -145,14 +153,56 @@ elif chart_type == "Sunburst Chart":
         values=y_axis, 
         title="Sunburst Chart Berdasarkan Pelabuhan dan Kategori"
     )
+elif chart_type == "Scatter Matrix":
+    fig = px.scatter_matrix(
+        filtered_data, 
+        dimensions=["DomestikBongkar2023", "DomestikMuat2023", "Ekspor2023", "Impor2023"],
+        color="Pelabuhan",
+        title="Scatter Matrix untuk Kolom Terpilih"
+    )
+elif chart_type == "Density Contour":
+    fig = px.density_contour(
+        filtered_data, 
+        x="Komoditi", 
+        y=y_axis, 
+        title="Density Contour Berdasarkan Komoditi dan Y-Axis"
+    )
 else:
     st.warning("Pilih tipe chart yang valid")
 
 # Tampilkan visualisasi
-if 'fig' in locals():
-    st.plotly_chart(fig, use_container_width=True)
-else:
-    st.warning("Visualisasi tidak dapat ditampilkan. Silakan periksa pengaturan Anda.")
+st.plotly_chart(fig, use_container_width=True)
+
+# Fitur Analisis dengan GPT-4o
+st.header("Analisis Data Menggunakan GPT-4o")
+user_query = st.text_area("Masukkan Pertanyaan Berdasarkan Data Anda")
+
+def ask_gpt4o(question, context):
+    """Fungsi untuk memanggil GPT-4o API"""
+    response = openai.ChatCompletion.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "Anda adalah asisten data scientist yang menganalisis data komoditas pelabuhan."},
+            {"role": "user", "content": f"Data: {context}\nPertanyaan: {question}"}
+        ],
+        max_tokens=2048,
+        temperature=1.0
+    )
+    return response["choices"][0]["message"]["content"]
+
+if st.button("Analisa dengan GPT-4o"):
+    if user_query:
+        # Convert data to string context
+        data_context = filtered_data.head(100).to_string()
+        with st.spinner("Menganalisis dengan GPT-4o..."):
+            result = ask_gpt4o(user_query, data_context)
+        st.subheader("Hasil Analisis:")
+        st.write(result)
+    else:
+        st.warning("Silakan masukkan pertanyaan terlebih dahulu")
+
+st.sidebar.info("Dibuat oleh AI dengan GPT-4o untuk analisis data interaktif.")
+
 
 
 
