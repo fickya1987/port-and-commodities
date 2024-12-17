@@ -41,6 +41,11 @@ if uploaded_file is not None:
     # Drop rows where all numeric columns are NaN
     df = df.dropna(subset=numeric_columns, how='all')
 
+    # Convert non-numeric columns to string explicitly
+    df['Pelabuhan'] = df['Pelabuhan'].astype(str)
+    df['Kategori'] = df['Kategori'].astype(str)
+    df['JenisKomoditi'] = df['JenisKomoditi'].astype(str)
+
     # Dropdown filter options
     selected_port = st.multiselect("Pilih Pelabuhan", df["Pelabuhan"].unique(), default=df["Pelabuhan"].unique())
     selected_category = st.multiselect("Pilih Kategori", df["Kategori"].unique(), default=df["Kategori"].unique())
@@ -84,16 +89,14 @@ if uploaded_file is not None:
                             title="Domestik Bongkar per Kategori"))
 
     # 8. Boxplot - Distribusi Impor
-    st.plotly_chart(px.box(filtered_data, x="Pelabuhan", y="Impor2023", color="JenisKomoditi",
-                           title="Distribusi Impor"))
+    st.plotly_chart(px.box(filtered_data, x="Pelabuhan", y="Impor2023", color="JenisKomoditi",\                           title="Distribusi Impor"))
 
     # 9. Treemap - Hierarki Jenis Komoditi
     st.plotly_chart(px.treemap(filtered_data, path=["Pelabuhan", "JenisKomoditi"], values="DomestikMuat2023",
                                title="Treemap Jenis Komoditi"))
 
     # 10. Sunburst - Kategori dan Jenis Komoditi
-    st.plotly_chart(px.sunburst(filtered_data, path=["Kategori", "JenisKomoditi"], values="Ekspor2023",
-                                title="Kategori dan Jenis Komoditi"))
+    st.plotly_chart(px.sunburst(filtered_data, path=["Kategori", "JenisKomoditi"], values="Ekspor2023",\                                title="Kategori dan Jenis Komoditi"))
 
     # GPT-4o Integration
     st.subheader("Analisis Data dengan GPT-4o")
