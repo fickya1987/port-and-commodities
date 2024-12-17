@@ -49,8 +49,8 @@ if uploaded_file is not None:
         df[col] = pd.to_numeric(df[col], errors='coerce')
 
     # Dropdown for choosing columns dynamically
-    selected_x = st.selectbox("Pilih Kolom X", options=selectable_columns)
-    selected_y = st.selectbox("Pilih Kolom Y", options=selectable_columns)
+    selected_x = st.selectbox("Pilih Kolom X", options=df.columns)
+    selected_y = st.selectbox("Pilih Kolom Y", options=df.columns)
     selected_chart = st.selectbox(
         "Pilih Jenis Chart",
         [
@@ -102,19 +102,32 @@ if uploaded_file is not None:
 
     # GPT-4o Integration
     st.subheader("Analisis Data dengan GPT-4o")
-    user_query = st.text_area("Masukkan Pertanyaan Berdasarkan Data")
-
-    if st.button("Kirim ke GPT-4o"):
+    st.write("### AI Data Analysis")
+    analysis_type = st.radio("Pilih jenis analisis:", ["Analisis Berdasarkan Data", "Pencarian Detail GPT-4o"])
+    analysis_query = st.text_area("Deskripsi analisis atau detail pencarian:")
+    if st.button("Generate AI Analysis") and analysis_query:
         try:
+            if analysis_type == "Analisis Berdasarkan Data":
+                prompt = (
+                    f"Berdasarkan dataset berikut, lakukan analisis mendalam tentang '{analysis_query}'.Gunakan bahasa Indonesia.Fokuskan analisis pada tren ekspor dan peluang untuk Indonesia:\n"
+                    + filtered_data.to_csv(index=False)
+                )
+            else:
+                prompt = (
+                    f"Cari informasi lengkap tentang '{analysis_query}' yang relevan dengan data ekspor Indonesia. Tambahkan referensi sumber terpercaya."
+                )
+
             response = openai.ChatCompletion.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": "Anda adalah asisten data analyst yang menganalisa file CSV/Excel."},
-                    {"role": "user", "content": f"Berikut data saya: {filtered_data.to_string(index=False)} \nPertanyaan saya: {user_query}"}
+                    {"role": "system", "content": "Anda adalah analis data berpengalaman. Gunakan bahasa Indonesia"},
+                    {"role": "user", "content": prompt}
                 ],
                 max_tokens=2048,
                 temperature=1.0
             )
-            st.write(response["choices"][0]["message"]["content"])
+            result = response['choices'][0]['message']['content']
+            st.write("#### Hasil Analisis AI:")
+            st.write(result)
         except Exception as e:
-            st.error(f"Terjadi kesalahan: {e}")
+            st.error(f"Error generating analysis: {e}")
