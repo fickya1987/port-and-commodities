@@ -63,7 +63,7 @@ filtered_data = data[
 chart_type = st.sidebar.selectbox(
     "Pilih Jenis Visualisasi", 
     [
-        "Bar Chart", "Line Chart", "Pie Chart", "Treemap", "Bubble Chart", "Heatmap", "Sunburst Chart", "Scatter Matrix", "Density Contour"
+        "Bar Chart", "Line Chart", "Pie Chart", "Treemap", "Bubble Chart", "Heatmap", "Sunburst Chart", "Scatter Matrix", "Density Contour", "Area Chart (Spider)"
     ]
 )
 
@@ -151,6 +151,21 @@ elif chart_type == "Density Contour":
         y=y_axis, 
         title="Density Contour Berdasarkan Komoditi dan Y-Axis"
     )
+elif chart_type == "Area Chart (Spider)":
+    categories = ["DomestikBongkar2023", "DomestikMuat2023", "Impor2023", "Ekspor2023"]
+    spider_data = filtered_data[categories].sum().reset_index()
+    spider_data.columns = ["Category", "Value"]
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatterpolar(
+        r=spider_data["Value"],
+        theta=spider_data["Category"],
+        fill='toself'
+    ))
+    fig.update_layout(
+        polar=dict(radialaxis=dict(visible=True)),
+        title="Area Chart (Spider) Berdasarkan Kategori Data"
+    )
 else:
     st.warning("Pilih tipe chart yang valid")
 
@@ -186,5 +201,6 @@ if st.button("Analisa dengan GPT-4o"):
         st.warning("Silakan masukkan pertanyaan terlebih dahulu")
 
 st.sidebar.info("Dibuat oleh AI dengan GPT-4o untuk analisis data interaktif.")
+
 
 
