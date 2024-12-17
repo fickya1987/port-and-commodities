@@ -37,6 +37,10 @@ if uploaded_file is not None:
     ]
     selectable_columns = [col for col in df.columns if col not in excluded_columns]
 
+    # Convert all non-numeric columns to string
+    for col in df.select_dtypes(exclude=['number']).columns:
+        df[col] = df[col].astype(str)
+
     # Ensure numeric columns dynamically
     non_numeric_columns = df[selectable_columns].select_dtypes(exclude=['number']).columns.tolist()
     numeric_columns = df[selectable_columns].select_dtypes(include=['number']).columns.tolist()
@@ -66,6 +70,9 @@ if uploaded_file is not None:
     filtered_data = df.copy()
     for col, vals in filters.items():
         filtered_data = filtered_data[filtered_data[col].isin(vals)]
+
+    st.subheader("Data Terfilter")
+    st.dataframe(filtered_data.head())
 
     # Chart visualizations
     st.subheader("Visualisasi Data")
