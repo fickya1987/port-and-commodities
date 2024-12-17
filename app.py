@@ -108,8 +108,8 @@ if chart_type == "Bar Chart":
     )
 elif chart_type == "Radar Chart":
     categories = ["DomestikBongkar2023", "DomestikMuat2023", "Impor2023", "Ekspor2023"]
-    radar_data = filtered_data.groupby('Pelabuhan')[categories].sum().reset_index()
-    
+    radar_data = filtered_data.groupby('Pelabuhan')[categories].mean().reset_index()
+
     fig = go.Figure()
     for _, row in radar_data.iterrows():
         fig.add_trace(go.Scatterpolar(
@@ -119,9 +119,12 @@ elif chart_type == "Radar Chart":
             name=row['Pelabuhan']
         ))
     fig.update_layout(
-        polar=dict(radialaxis=dict(visible=True)),
+        polar=dict(radialaxis=dict(visible=True, range=[0, radar_data[categories].max().max()])),
         title="Radar Chart Berdasarkan Kategori Data untuk Setiap Pelabuhan"
     )
+elif chart_type == "Heatmap":
+    heatmap_data = filtered_data.pivot_table(index="Pelabuhan", columns="Kategori", values=y_axis, aggfunc='sum', fill_value=0)
+    fig = px.imshow(heatmap_data, title="Heatmap Berdasarkan Pelabuhan dan Kategori")
 elif chart_type == "Treemap":
     fig = px.treemap(
         filtered_data, 
@@ -150,6 +153,9 @@ else:
     st.warning("Pilih tipe chart yang valid")
 
 # Tampilkan visualisasi
-st.plotly_chart(fig, use_container_width=True)
+if 'fig' in locals():
+    st.plotly_chart(fig, use_container_width=True)
+else:
+    st.warning("Visualisasi tidak dapat ditampilkan. Silakan periksa pengaturan Anda.")
 
 
