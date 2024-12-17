@@ -21,12 +21,9 @@ def load_data(uploaded_file):
         st.error("Format file tidak didukung. Silakan unggah file CSV atau Excel.")
         return None
     
-    # Konversi kolom numerik otomatis
+    # Konversi semua kolom numerik otomatis
     for col in df.columns:
-        try:
-            df[col] = pd.to_numeric(df[col], errors='ignore')
-        except:
-            pass
+        df[col] = pd.to_numeric(df[col], errors='coerce')
     return df
 
 # App Title
@@ -46,18 +43,18 @@ st.sidebar.header("Pengaturan Visualisasi")
 # Pilihan Pelabuhan, JenisKomoditi, dan Kategori
 pelabuhan_filter = st.sidebar.multiselect(
     "Filter Pelabuhan",
-    options=data['Pelabuhan'].unique(),
-    default=data['Pelabuhan'].unique()
+    options=data['Pelabuhan'].dropna().unique(),
+    default=data['Pelabuhan'].dropna().unique()
 )
 jenis_komoditi_filter = st.sidebar.multiselect(
     "Filter Jenis Komoditi",
-    options=data['JenisKomoditi'].unique(),
-    default=data['JenisKomoditi'].unique()
+    options=data['JenisKomoditi'].dropna().unique(),
+    default=data['JenisKomoditi'].dropna().unique()
 )
 kategori_filter = st.sidebar.multiselect(
     "Filter Kategori",
-    options=data['Kategori'].unique(),
-    default=data['Kategori'].unique()
+    options=data['Kategori'].dropna().unique(),
+    default=data['Kategori'].dropna().unique()
 )
 
 # Filter Data
@@ -85,10 +82,6 @@ y_axis = st.sidebar.selectbox(
         "DomestikBongkar2020", "DomestikMuat2020", "Impor2020", "Ekspor2020"
     ]
 )
-
-# Konversi nilai kolom y_axis ke numerik
-filtered_data[y_axis] = pd.to_numeric(filtered_data[y_axis], errors='coerce')
-filtered_data = filtered_data.dropna(subset=[y_axis])
 
 # Menampilkan data
 if st.checkbox("Lihat Data Komoditas"):
