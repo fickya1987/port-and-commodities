@@ -28,16 +28,25 @@ if uploaded_file is not None:
     st.subheader("Tampilan Data")
     st.dataframe(df.head())
 
+    # Columns to exclude from selection
+    excluded_columns = [
+        "DomestikBongkar2023", "DomestikMuat2023", "Impor2023", "Ekspor2023",
+        "DomestikBongkar2022", "DomestikMuat2022", "Impor2022", "Ekspor2022",
+        "DomestikBongkar2021", "DomestikMuat2021", "Impor2021", "Ekspor2021",
+        "DomestikBongkar2020", "DomestikMuat2020", "Impor2020", "Ekspor2020"
+    ]
+    selectable_columns = [col for col in df.columns if col not in excluded_columns]
+
     # Ensure numeric columns dynamically
-    non_numeric_columns = df.select_dtypes(exclude=['number']).columns.tolist()
-    numeric_columns = df.select_dtypes(include=['number']).columns.tolist()
+    non_numeric_columns = df[selectable_columns].select_dtypes(exclude=['number']).columns.tolist()
+    numeric_columns = df[selectable_columns].select_dtypes(include=['number']).columns.tolist()
 
     for col in numeric_columns:
         df[col] = pd.to_numeric(df[col], errors='coerce')
 
     # Dropdown for choosing columns dynamically
-    selected_x = st.selectbox("Pilih Kolom X", options=df.columns)
-    selected_y = st.selectbox("Pilih Kolom Y", options=df.columns)
+    selected_x = st.selectbox("Pilih Kolom X", options=selectable_columns)
+    selected_y = st.selectbox("Pilih Kolom Y", options=selectable_columns)
     selected_chart = st.selectbox(
         "Pilih Jenis Chart",
         [
@@ -102,4 +111,3 @@ if uploaded_file is not None:
             st.write(response["choices"][0]["message"]["content"])
         except Exception as e:
             st.error(f"Terjadi kesalahan: {e}")
-
