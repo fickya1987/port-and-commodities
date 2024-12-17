@@ -35,7 +35,12 @@ else:
 # Sidebar Menu
 st.sidebar.header("Pengaturan Visualisasi")
 
-# Pilihan JenisKomoditi dan Kategori
+# Pilihan Pelabuhan, JenisKomoditi, dan Kategori
+pelabuhan_filter = st.sidebar.multiselect(
+    "Filter Pelabuhan",
+    options=data['Pelabuhan'].unique(),
+    default=data['Pelabuhan'].unique()
+)
 jenis_komoditi_filter = st.sidebar.multiselect(
     "Filter Jenis Komoditi",
     options=data['JenisKomoditi'].unique(),
@@ -48,7 +53,11 @@ kategori_filter = st.sidebar.multiselect(
 )
 
 # Filter Data
-filtered_data = data[(data['JenisKomoditi'].isin(jenis_komoditi_filter)) & (data['Kategori'].isin(kategori_filter))]
+filtered_data = data[
+    (data['Pelabuhan'].isin(pelabuhan_filter)) &
+    (data['JenisKomoditi'].isin(jenis_komoditi_filter)) &
+    (data['Kategori'].isin(kategori_filter))
+]
 
 # Dropdown pilihan untuk jenis visualisasi
 chart_type = st.sidebar.selectbox(
@@ -80,9 +89,9 @@ if chart_type == "Bar Chart":
         filtered_data, 
         x="Komoditi", 
         y=y_axis, 
-        color="JenisKomoditi", 
+        color="Pelabuhan", 
         barmode="group", 
-        title="Bar Chart Berdasarkan Jenis Komoditi dan Kategori",
+        title="Bar Chart Berdasarkan Pelabuhan dan Kategori",
         text_auto=True
     )
 elif chart_type == "Line Chart":
@@ -90,23 +99,23 @@ elif chart_type == "Line Chart":
         filtered_data, 
         x="Komoditi", 
         y=y_axis, 
-        color="JenisKomoditi", 
+        color="Pelabuhan", 
         markers=True, 
-        title="Line Chart Berdasarkan Jenis Komoditi"
+        title="Line Chart Berdasarkan Pelabuhan"
     )
 elif chart_type == "Pie Chart":
     fig = px.pie(
         filtered_data, 
-        names="JenisKomoditi", 
+        names="Pelabuhan", 
         values=y_axis, 
-        title="Distribusi Jenis Komoditi"
+        title="Distribusi Data Berdasarkan Pelabuhan"
     )
 elif chart_type == "Treemap":
     fig = px.treemap(
         filtered_data, 
-        path=["Kategori", "JenisKomoditi", "Komoditi"], 
+        path=["Pelabuhan", "Kategori", "JenisKomoditi", "Komoditi"], 
         values=y_axis, 
-        title="Treemap Berdasarkan Kategori dan Jenis Komoditi"
+        title="Treemap Berdasarkan Pelabuhan, Kategori, dan Jenis Komoditi"
     )
 elif chart_type == "Bubble Chart":
     fig = px.scatter(
@@ -114,25 +123,25 @@ elif chart_type == "Bubble Chart":
         x="Komoditi", 
         y=y_axis, 
         size=y_axis, 
-        color="JenisKomoditi", 
+        color="Pelabuhan", 
         hover_data=["Kategori"],
-        title="Bubble Chart Berdasarkan Jenis Komoditi dan Kategori"
+        title="Bubble Chart Berdasarkan Pelabuhan dan Kategori"
     )
 elif chart_type == "Heatmap":
-    pivot_data = filtered_data.pivot_table(index="JenisKomoditi", columns="Kategori", values=y_axis, aggfunc='sum', fill_value=0)
-    fig = px.imshow(pivot_data, title="Heatmap Berdasarkan Jenis Komoditi dan Kategori")
+    pivot_data = filtered_data.pivot_table(index="Pelabuhan", columns="Kategori", values=y_axis, aggfunc='sum', fill_value=0)
+    fig = px.imshow(pivot_data, title="Heatmap Berdasarkan Pelabuhan dan Kategori")
 elif chart_type == "Sunburst Chart":
     fig = px.sunburst(
         filtered_data, 
-        path=["Kategori", "JenisKomoditi", "Komoditi"], 
+        path=["Pelabuhan", "Kategori", "JenisKomoditi", "Komoditi"], 
         values=y_axis, 
-        title="Sunburst Chart Berdasarkan Kategori dan Jenis Komoditi"
+        title="Sunburst Chart Berdasarkan Pelabuhan dan Kategori"
     )
 elif chart_type == "Scatter Matrix":
     fig = px.scatter_matrix(
         filtered_data, 
         dimensions=["DomestikBongkar2023", "DomestikMuat2023", "Ekspor2023", "Impor2023"],
-        color="JenisKomoditi",
+        color="Pelabuhan",
         title="Scatter Matrix untuk Kolom Terpilih"
     )
 elif chart_type == "Density Contour":
@@ -177,4 +186,5 @@ if st.button("Analisa dengan GPT-4o"):
         st.warning("Silakan masukkan pertanyaan terlebih dahulu")
 
 st.sidebar.info("Dibuat oleh AI dengan GPT-4o untuk analisis data interaktif.")
+
 
