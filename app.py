@@ -21,13 +21,16 @@ def load_data(uploaded_file):
         st.error("Format file tidak didukung. Silakan unggah file CSV atau Excel.")
         return None
     
-    # Clean numeric columns
+    # Bersihkan header kolom
+    df.columns = df.columns.str.strip()
+    
+    # Bersihkan dan konversi kolom numerik
     for col in df.columns:
-        if df[col].dtype == 'object':  # Attempt conversion only for object types
+        if df[col].dtype == 'object':  # Konversi hanya kolom object
             try:
-                df[col] = pd.to_numeric(df[col].str.replace(',', ''), errors='coerce')
+                df[col] = pd.to_numeric(df[col].str.replace(',', '').str.strip(), errors='coerce')
             except Exception as e:
-                print(f"Error converting column {col}: {e}")
+                print(f"Kolom '{col}' tidak dapat dikonversi: {e}")
     return df
 
 # App Title
