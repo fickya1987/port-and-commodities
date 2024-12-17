@@ -54,7 +54,7 @@ filtered_data = data[(data['JenisKomoditi'].isin(jenis_komoditi_filter)) & (data
 chart_type = st.sidebar.selectbox(
     "Pilih Jenis Visualisasi", 
     [
-        "Bar Chart", "Line Chart", "Pie Chart", "Treemap", "Bubble Chart"
+        "Bar Chart", "Line Chart", "Pie Chart", "Treemap", "Bubble Chart", "Heatmap", "Sunburst Chart", "Scatter Matrix", "Density Contour"
     ]
 )
 
@@ -118,6 +118,30 @@ elif chart_type == "Bubble Chart":
         hover_data=["Kategori"],
         title="Bubble Chart Berdasarkan Jenis Komoditi dan Kategori"
     )
+elif chart_type == "Heatmap":
+    pivot_data = filtered_data.pivot_table(index="JenisKomoditi", columns="Kategori", values=y_axis, aggfunc='sum', fill_value=0)
+    fig = px.imshow(pivot_data, title="Heatmap Berdasarkan Jenis Komoditi dan Kategori")
+elif chart_type == "Sunburst Chart":
+    fig = px.sunburst(
+        filtered_data, 
+        path=["Kategori", "JenisKomoditi", "Komoditi"], 
+        values=y_axis, 
+        title="Sunburst Chart Berdasarkan Kategori dan Jenis Komoditi"
+    )
+elif chart_type == "Scatter Matrix":
+    fig = px.scatter_matrix(
+        filtered_data, 
+        dimensions=["DomestikBongkar2023", "DomestikMuat2023", "Ekspor2023", "Impor2023"],
+        color="JenisKomoditi",
+        title="Scatter Matrix untuk Kolom Terpilih"
+    )
+elif chart_type == "Density Contour":
+    fig = px.density_contour(
+        filtered_data, 
+        x="Komoditi", 
+        y=y_axis, 
+        title="Density Contour Berdasarkan Komoditi dan Y-Axis"
+    )
 else:
     st.warning("Pilih tipe chart yang valid")
 
@@ -135,7 +159,9 @@ def ask_gpt4o(question, context):
         messages=[
             {"role": "system", "content": "Anda adalah asisten data scientist yang menganalisis data komoditas pelabuhan."},
             {"role": "user", "content": f"Data: {context}\nPertanyaan: {question}"}
-        ]
+        ],
+        max_tokens=2048,
+        temperature=1.0
     )
     return response["choices"][0]["message"]["content"]
 
