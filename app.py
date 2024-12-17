@@ -1,160 +1,102 @@
-import streamlit as st
-import pandas as pd
 import os
-import openai
+import pandas as pd
+import streamlit as st
 import plotly.express as px
-import plotly.graph_objects as go
 from dotenv import load_dotenv
+import openai
 
-# Load API key from .env
+# Load environment variables
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# Upload Data File
-@st.cache_data
-def load_data(uploaded_file):
-    if uploaded_file.name.endswith('.csv'):
+# Streamlit page config
+st.set_page_config(page_title="Pelabuhan Komoditas Dashboard", layout="wide")
+st.title("Visualisasi dan Analisis Komoditas Pelabuhan")
+
+# File uploader
+uploaded_file = st.file_uploader("Unggah file CSV atau Excel", type=["csv", "xlsx"])
+
+if uploaded_file is not None:
+    # Load data
+    if uploaded_file.name.endswith("csv"):
         df = pd.read_csv(uploaded_file)
-    elif uploaded_file.name.endswith('.xlsx'):
-        df = pd.read_excel(uploaded_file)
     else:
-        st.error("Format file tidak didukung. Silakan unggah file CSV atau Excel.")
-        return None
+        df = pd.read_excel(uploaded_file)
+    st.success("Data berhasil diunggah!")
     
-    # Bersihkan header kolom
-    df.columns = df.columns.str.strip()
+    # Quick preview
+    st.subheader("Tampilan Data")
+    st.dataframe(df.head())
+
+    # Dropdown filter options
+    selected_port = st.multiselect("Pilih Pelabuhan", df["Pelabuhan"].unique(), default=df["Pelabuhan"].unique())
+    selected_category = st.multiselect("Pilih Kategori", df["Kategori"].unique(), default=df["Kategori"].unique())
+    selected_type = st.multiselect("Pilih Jenis Komoditi", df["JenisKomoditi"].unique(), default=df["JenisKomoditi"].unique())
     
-    # Bersihkan dan konversi kolom numerik
-    for col in df.columns:
-        if df[col].dtype == 'object':  # Konversi hanya kolom object
-            try:
-                df[col] = pd.to_numeric(df[col].str.replace(',', '').str.strip(), errors='coerce')
-            except Exception as e:
-                print(f"Kolom '{col}' tidak dapat dikonversi: {e}")
-    return df
+    # Filter data
+    filtered_data = df[(df["Pelabuhan"].isin(selected_port)) &
+                       (df["Kategori"].isin(selected_category)) &
+                       (df["JenisKomoditi"].isin(selected_type))]
+    
+    st.subheader("Data Terfilter")
+    st.dataframe(filtered_data)
 
-# App Title
-st.title("Visualisasi dan Analisis Data Komoditas Pelabuhan")
+    # Chart Visualizations
+    st.subheader("Visualisasi Data")
 
-# File Uploader
-uploaded_file = st.sidebar.file_uploader("Unggah File CSV atau Excel", type=["csv", "xlsx"])
-if uploaded_file:
-    data = load_data(uploaded_file)
-else:
-    st.warning("Harap unggah file data terlebih dahulu.")
-    st.stop()
+    # 1. Bar Chart - Domestik vs Ekspor/Impor
+    st.plotly_chart(px.bar(filtered_data, x="Pelabuhan", y=["DomestikBongkar2023", "Ekspor2023", "Impor2023"],
+                           color="Kategori", barmode="group", title="Perbandingan Domestik, Ekspor, dan Impor"))
 
-# Sidebar Menu
-st.sidebar.header("Pengaturan Visualisasi")
+    # 2. Pie Chart - Jenis Komoditi
+    st.plotly_chart(px.pie(filtered_data, names="JenisKomoditi", title="Distribusi Jenis Komoditi"))
 
-# Pilihan Pelabuhan, JenisKomoditi, dan Kategori
-pelabuhan_filter = st.sidebar.multiselect(
-    "Filter Pelabuhan",
-    options=data['Pelabuhan'].dropna().unique(),
-    default=data['Pelabuhan'].dropna().unique()
-)
-jenis_komoditi_filter = st.sidebar.multiselect(
-    "Filter Jenis Komoditi",
-    options=data['JenisKomoditi'].dropna().unique(),
-    default=data['JenisKomoditi'].dropna().unique()
-)
-kategori_filter = st.sidebar.multiselect(
-    "Filter Kategori",
-    options=data['Kategori'].dropna().unique(),
-    default=data['Kategori'].dropna().unique()
-)
+    # 3. Line Chart - Tren Domestik dari Tahun 2020-2023
+    st.plotly_chart(px.line(filtered_data, x="Pelabuhan", y=["DomestikBongkar2020", "DomestikBongkar2021", 
+                                                             "DomestikBongkar2022", "DomestikBongkar2023"],
+                            color="Pelabuhan", title="Tren Domestik Bongkar"))
 
-# Filter Data
-filtered_data = data[
-    (data['Pelabuhan'].isin(pelabuhan_filter)) &
-    (data['JenisKomoditi'].isin(jenis_komoditi_filter)) &
-    (data['Kategori'].isin(kategori_filter))
-]
+    # 4. Scatter Plot - Ekspor vs Impor
+    st.plotly_chart(px.scatter(filtered_data, x="Ekspor2023", y="Impor2023", color="Kategori",
+                               size="DomestikMuat2023", title="Ekspor vs Impor"))
 
-# Dropdown pilihan untuk jenis visualisasi
-chart_type = st.sidebar.selectbox(
-    "Pilih Jenis Visualisasi", 
-    [
-        "Bar Chart", "Line Chart", "Pie Chart", "Treemap", "Bubble Chart", "Heatmap", "Sunburst Chart", "Radar Chart"
-    ]
-)
+    # 5. Heatmap - Korelasi Tahun ke Tahun
+    st.plotly_chart(px.imshow(filtered_data.corr(), title="Korelasi Antar Kolom"))
 
-# Pilih kolom data untuk visualisasi
-y_axis = st.sidebar.selectbox(
-    "Pilih Kolom Y-Axis", 
-    [
-        "DomestikBongkar2023", "DomestikMuat2023", "Impor2023", "Ekspor2023",
-        "DomestikBongkar2022", "DomestikMuat2022", "Impor2022", "Ekspor2022",
-        "DomestikBongkar2021", "DomestikMuat2021", "Impor2021", "Ekspor2021",
-        "DomestikBongkar2020", "DomestikMuat2020", "Impor2020", "Ekspor2020"
-    ]
-)
+    # 6. Histogram - Distribusi Domestik Muat
+    st.plotly_chart(px.histogram(filtered_data, x="DomestikMuat2023", color="Pelabuhan", title="Distribusi Domestik Muat"))
 
-# Menampilkan data
-if st.checkbox("Lihat Data Komoditas"):
-    st.write(filtered_data)
+    # 7. Area Chart - Kategori per Pelabuhan
+    st.plotly_chart(px.area(filtered_data, x="Pelabuhan", y="DomestikBongkar2023", color="Kategori",
+                            title="Domestik Bongkar per Kategori"))
 
-# Visualisasi Data
-st.header("Visualisasi Data")
-if chart_type == "Bar Chart":
-    fig = px.bar(
-        filtered_data, 
-        x="Komoditi", 
-        y=y_axis, 
-        color="Pelabuhan", 
-        barmode="group", 
-        title="Bar Chart Berdasarkan Pelabuhan dan Kategori",
-        text_auto=True
-    )
-elif chart_type == "Radar Chart":
-    categories = ["DomestikBongkar2023", "DomestikMuat2023", "Impor2023", "Ekspor2023"]
-    radar_data = filtered_data.groupby('Pelabuhan')[categories].mean().reset_index()
+    # 8. Boxplot - Distribusi Impor
+    st.plotly_chart(px.box(filtered_data, x="Pelabuhan", y="Impor2023", color="JenisKomoditi",
+                           title="Distribusi Impor"))
 
-    fig = go.Figure()
-    for _, row in radar_data.iterrows():
-        fig.add_trace(go.Scatterpolar(
-            r=row[categories].values,
-            theta=categories,
-            fill='toself',
-            name=row['Pelabuhan']
-        ))
-    fig.update_layout(
-        polar=dict(radialaxis=dict(visible=True, range=[0, radar_data[categories].max().max()])),
-        title="Radar Chart Berdasarkan Kategori Data untuk Setiap Pelabuhan"
-    )
-elif chart_type == "Heatmap":
-    heatmap_data = filtered_data.pivot_table(index="Pelabuhan", columns="Kategori", values=y_axis, aggfunc='sum', fill_value=0)
-    fig = px.imshow(heatmap_data, title="Heatmap Berdasarkan Pelabuhan dan Kategori")
-elif chart_type == "Treemap":
-    fig = px.treemap(
-        filtered_data, 
-        path=["Pelabuhan", "Kategori", "JenisKomoditi", "Komoditi"], 
-        values=y_axis, 
-        title="Treemap Berdasarkan Pelabuhan, Kategori, dan Jenis Komoditi"
-    )
-elif chart_type == "Bubble Chart":
-    fig = px.scatter(
-        filtered_data, 
-        x="Komoditi", 
-        y=y_axis, 
-        size=y_axis, 
-        color="Pelabuhan", 
-        hover_data=["Kategori"],
-        title="Bubble Chart Berdasarkan Pelabuhan dan Kategori"
-    )
-elif chart_type == "Sunburst Chart":
-    fig = px.sunburst(
-        filtered_data, 
-        path=["Pelabuhan", "Kategori", "JenisKomoditi", "Komoditi"], 
-        values=y_axis, 
-        title="Sunburst Chart Berdasarkan Pelabuhan dan Kategori"
-    )
-else:
-    st.warning("Pilih tipe chart yang valid")
+    # 9. Treemap - Hierarki Jenis Komoditi
+    st.plotly_chart(px.treemap(filtered_data, path=["Pelabuhan", "JenisKomoditi"], values="DomestikMuat2023",
+                               title="Treemap Jenis Komoditi"))
 
-# Tampilkan visualisasi
-if 'fig' in locals():
-    st.plotly_chart(fig, use_container_width=True)
-else:
-    st.warning("Visualisasi tidak dapat ditampilkan. Silakan periksa pengaturan Anda.")
+    # 10. Sunburst - Kategori dan Jenis Komoditi
+    st.plotly_chart(px.sunburst(filtered_data, path=["Kategori", "JenisKomoditi"], values="Ekspor2023",
+                                title="Kategori dan Jenis Komoditi"))
 
+    # GPT-4o Integration
+    st.subheader("Analisis Data dengan GPT-4o")
+    user_query = st.text_area("Masukkan Pertanyaan Berdasarkan Data")
+
+    if st.button("Kirim ke GPT-4o"):
+        try:
+            response = openai.ChatCompletion.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "Anda adalah asisten data analyst yang menganalisa file CSV/Excel."},
+                    {"role": "user", "content": f"Berikut data saya: {filtered_data.head(20).to_string()} \nPertanyaan saya: {user_query}"}
+                ],
+                max_tokens=2048,
+                temperature=1.0
+            )
+            st.write(response["choices"][0]["message"]["content"])
+        except Exception as e:
+            st.error(f"Terjadi kesalahan: {e}")
