@@ -23,10 +23,11 @@ def load_data(uploaded_file):
     
     # Clean numeric columns
     for col in df.columns:
-        try:
-            df[col] = pd.to_numeric(df[col], errors='coerce')
-        except Exception as e:
-            print(f"Error converting column {col}: {e}")
+        if df[col].dtype == 'object':  # Attempt conversion only for object types
+            try:
+                df[col] = pd.to_numeric(df[col].str.replace(',', ''), errors='coerce')
+            except Exception as e:
+                print(f"Error converting column {col}: {e}")
     return df
 
 # App Title
@@ -153,9 +154,4 @@ if 'fig' in locals():
     st.plotly_chart(fig, use_container_width=True)
 else:
     st.warning("Visualisasi tidak dapat ditampilkan. Silakan periksa pengaturan Anda.")
-
-
-
-
-
 
