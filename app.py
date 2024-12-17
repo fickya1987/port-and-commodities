@@ -23,80 +23,66 @@ if uploaded_file is not None:
     else:
         df = pd.read_excel(uploaded_file)
     st.success("Data berhasil diunggah!")
-    
+
     # Quick preview
     st.subheader("Tampilan Data")
     st.dataframe(df.head())
 
-    # Ensure numeric columns
-    numeric_columns = [
-        "DomestikBongkar2023", "DomestikMuat2023", "Impor2023", "Ekspor2023",
-        "DomestikBongkar2022", "DomestikMuat2022", "Impor2022", "Ekspor2022",
-        "DomestikBongkar2021", "DomestikMuat2021", "Impor2021", "Ekspor2021",
-        "DomestikBongkar2020", "DomestikMuat2020", "Impor2020", "Ekspor2020"
-    ]
+    # Ensure numeric columns dynamically
+    non_numeric_columns = df.select_dtypes(exclude=['number']).columns.tolist()
+    numeric_columns = df.select_dtypes(include=['number']).columns.tolist()
+
     for col in numeric_columns:
         df[col] = pd.to_numeric(df[col], errors='coerce')
 
-    # Drop rows where all numeric columns are NaN
-    df = df.dropna(subset=numeric_columns, how='all')
+    # Dropdown for choosing columns dynamically
+    selected_x = st.selectbox("Pilih Kolom X", options=df.columns)
+    selected_y = st.selectbox("Pilih Kolom Y", options=df.columns)
+    selected_chart = st.selectbox(
+        "Pilih Jenis Chart",
+        [
+            "Bar Chart", "Pie Chart", "Line Chart", "Scatter Plot", "Heatmap",
+            "Histogram", "Area Chart", "Boxplot", "Treemap", "Sunburst"
+        ]
+    )
 
-    # Convert non-numeric columns to string explicitly
-    df['Pelabuhan'] = df['Pelabuhan'].astype(str)
-    df['Kategori'] = df['Kategori'].astype(str)
-    df['JenisKomoditi'] = df['JenisKomoditi'].astype(str)
+    # Filters
+    st.subheader("Filter Data")
+    filters = {}
+    for col in non_numeric_columns:
+        unique_vals = df[col].unique()
+        selected_vals = st.multiselect(f"Pilih {col}", unique_vals, default=unique_vals)
+        filters[col] = selected_vals
 
-    # Dropdown filter options
-    selected_port = st.multiselect("Pilih Pelabuhan", df["Pelabuhan"].unique(), default=df["Pelabuhan"].unique())
-    selected_category = st.multiselect("Pilih Kategori", df["Kategori"].unique(), default=df["Kategori"].unique())
-    selected_type = st.multiselect("Pilih Jenis Komoditi", df["JenisKomoditi"].unique(), default=df["JenisKomoditi"].unique())
-    
-    # Filter data
-    filtered_data = df[(df["Pelabuhan"].isin(selected_port)) &
-                       (df["Kategori"].isin(selected_category)) &
-                       (df["JenisKomoditi"].isin(selected_type))]
-    
-    st.subheader("Data Terfilter")
-    st.dataframe(filtered_data)
+    filtered_data = df.copy()
+    for col, vals in filters.items():
+        filtered_data = filtered_data[filtered_data[col].isin(vals)]
 
-    # Chart Visualizations
+    # Chart visualizations
     st.subheader("Visualisasi Data")
 
-    # 1. Bar Chart - Domestik vs Ekspor/Impor
-    st.plotly_chart(px.bar(filtered_data, x="Pelabuhan", y=["DomestikBongkar2023", "Ekspor2023", "Impor2023"],
-                           color="Kategori", barmode="group", title="Perbandingan Domestik, Ekspor, dan Impor"))
-
-    # 2. Pie Chart - Jenis Komoditi
-    st.plotly_chart(px.pie(filtered_data, names="JenisKomoditi", title="Distribusi Jenis Komoditi"))
-
-    # 3. Line Chart - Tren Domestik dari Tahun 2020-2023
-    st.plotly_chart(px.line(filtered_data, x="Pelabuhan", y=["DomestikBongkar2020", "DomestikBongkar2021", 
-                                                             "DomestikBongkar2022", "DomestikBongkar2023"],
-                            color="Pelabuhan", title="Tren Domestik Bongkar"))
-
-    # 4. Scatter Plot - Ekspor vs Impor
-    st.plotly_chart(px.scatter(filtered_data, x="Ekspor2023", y="Impor2023", color="Kategori",
-                               size=filtered_data["DomestikMuat2023"].fillna(0), title="Ekspor vs Impor"))
-
-    # 5. Heatmap - Korelasi Tahun ke Tahun
-    st.plotly_chart(px.imshow(filtered_data.corr(), title="Korelasi Antar Kolom"))
-
-    # 6. Histogram - Distribusi Domestik Muat
-    st.plotly_chart(px.histogram(filtered_data, x="DomestikMuat2023", color="Pelabuhan", title="Distribusi Domestik Muat"))
-
-    # 7. Area Chart - Kategori per Pelabuhan
-    st.plotly_chart(px.area(filtered_data, x="Pelabuhan", y="DomestikBongkar2023", color="Kategori",
-                            title="Domestik Bongkar per Kategori"))
-
-    # 8. Boxplot - Distribusi Impor
-    st.plotly_chart(px.box(filtered_data, x="Pelabuhan", y="Impor2023", color="JenisKomoditi",\                           title="Distribusi Impor"))
-
-    # 9. Treemap - Hierarki Jenis Komoditi
-    st.plotly_chart(px.treemap(filtered_data, path=["Pelabuhan", "JenisKomoditi"], values="DomestikMuat2023",
-                               title="Treemap Jenis Komoditi"))
-
-    # 10. Sunburst - Kategori dan Jenis Komoditi
-    st.plotly_chart(px.sunburst(filtered_data, path=["Kategori", "JenisKomoditi"], values="Ekspor2023",\                                title="Kategori dan Jenis Komoditi"))
+    if selected_chart == "Bar Chart":
+        st.plotly_chart(
+            px.bar(filtered_data, x=selected_x, y=selected_y, color=non_numeric_columns[0], barmode="group")
+        )
+    elif selected_chart == "Pie Chart":
+        st.plotly_chart(px.pie(filtered_data, names=selected_x, title=f"Distribusi {selected_x}"))
+    elif selected_chart == "Line Chart":
+        st.plotly_chart(px.line(filtered_data, x=selected_x, y=selected_y, color=non_numeric_columns[0]))
+    elif selected_chart == "Scatter Plot":
+        st.plotly_chart(px.scatter(filtered_data, x=selected_x, y=selected_y, color=non_numeric_columns[0]))
+    elif selected_chart == "Heatmap":
+        st.plotly_chart(px.imshow(filtered_data.corr()))
+    elif selected_chart == "Histogram":
+        st.plotly_chart(px.histogram(filtered_data, x=selected_x, color=non_numeric_columns[0]))
+    elif selected_chart == "Area Chart":
+        st.plotly_chart(px.area(filtered_data, x=selected_x, y=selected_y, color=non_numeric_columns[0]))
+    elif selected_chart == "Boxplot":
+        st.plotly_chart(px.box(filtered_data, x=selected_x, y=selected_y, color=non_numeric_columns[0]))
+    elif selected_chart == "Treemap":
+        st.plotly_chart(px.treemap(filtered_data, path=[selected_x], values=selected_y))
+    elif selected_chart == "Sunburst":
+        st.plotly_chart(px.sunburst(filtered_data, path=[selected_x], values=selected_y))
 
     # GPT-4o Integration
     st.subheader("Analisis Data dengan GPT-4o")
@@ -116,3 +102,4 @@ if uploaded_file is not None:
             st.write(response["choices"][0]["message"]["content"])
         except Exception as e:
             st.error(f"Terjadi kesalahan: {e}")
+
