@@ -49,56 +49,58 @@ if uploaded_file is not None:
         df[col] = pd.to_numeric(df[col], errors='coerce')
 
     # Dropdown for choosing columns dynamically
-    selected_x = st.selectbox("Pilih Kolom X", options=df.columns)
-    selected_y = st.selectbox("Pilih Kolom Y", options=df.columns)
     selected_chart = st.selectbox(
         "Pilih Jenis Chart",
         [
-            "Bar Chart", "Pie Chart", "Line Chart", "Scatter Plot", "Heatmap",
-            "Histogram", "Area Chart", "Boxplot", "Treemap", "Sunburst"
+            "Bar Chart", "Line Chart", "Scatter Plot"
         ]
     )
 
     # Filters
     st.subheader("Filter Data")
-    filters = {}
-    for col in non_numeric_columns:
-        unique_vals = df[col].unique()
-        selected_vals = st.multiselect(f"Pilih {col}", unique_vals, default=unique_vals)
-        filters[col] = selected_vals
+    selected_pelabuhan = st.multiselect("Pilih Pelabuhan", df['Pelabuhan'].unique(), default=df['Pelabuhan'].unique())
+    selected_jenis = st.multiselect("Pilih Jenis Komoditas", df['JenisKomoditi'].unique(), default=df['JenisKomoditi'].unique())
+    selected_kategori = st.multiselect("Pilih Kategori", df['Kategori'].unique(), default=df['Kategori'].unique())
 
-    filtered_data = df.copy()
-    for col, vals in filters.items():
-        filtered_data = filtered_data[filtered_data[col].isin(vals)]
+    filtered_data = df[(df['Pelabuhan'].isin(selected_pelabuhan)) &
+                       (df['JenisKomoditi'].isin(selected_jenis)) &
+                       (df['Kategori'].isin(selected_kategori))]
 
     st.subheader("Data Terfilter")
-    st.dataframe(filtered_data.head())
+    st.dataframe(filtered_data)
+
+    # Prepare long-format data for comparison
+    columns_to_melt = [
+        "DomestikBongkar2023", "DomestikMuat2023", "Impor2023", "Ekspor2023",
+        "DomestikBongkar2022", "DomestikMuat2022", "Impor2022", "Ekspor2022",
+        "DomestikBongkar2021", "DomestikMuat2021", "Impor2021", "Ekspor2021",
+        "DomestikBongkar2020", "DomestikMuat2020", "Impor2020", "Ekspor2020"
+    ]
+
+    melted_data = filtered_data.melt(id_vars=['Pelabuhan', 'JenisKomoditi', 'Kategori'], 
+                                     value_vars=columns_to_melt, 
+                                     var_name='Tahun', value_name='Jumlah')
+
+    # Clean year column
+    melted_data['Tahun'] = melted_data['Tahun'].str.extract('(\\d{4})')
 
     # Chart visualizations
     st.subheader("Visualisasi Data")
-
     if selected_chart == "Bar Chart":
         st.plotly_chart(
-            px.bar(filtered_data, x=selected_x, y=excluded_columns, barmode="group")
+            px.bar(melted_data, x="Tahun", y="Jumlah", color="Pelabuhan", 
+                   facet_col="JenisKomoditi", title="Perbandingan Data Ekspor/Impor dari 2020-2023")
         )
-    elif selected_chart == "Pie Chart":
-        st.plotly_chart(px.pie(filtered_data, names=selected_x, title=f"Distribusi {selected_x}"))
     elif selected_chart == "Line Chart":
-        st.plotly_chart(px.line(filtered_data, x=selected_x, y=excluded_columns))
+        st.plotly_chart(
+            px.line(melted_data, x="Tahun", y="Jumlah", color="Pelabuhan", 
+                    line_group="JenisKomoditi", title="Tren Data Ekspor/Impor dari 2020-2023")
+        )
     elif selected_chart == "Scatter Plot":
-        st.plotly_chart(px.scatter(filtered_data, x=selected_x, y=selected_y))
-    elif selected_chart == "Heatmap":
-        st.plotly_chart(px.imshow(filtered_data[excluded_columns].corr()))
-    elif selected_chart == "Histogram":
-        st.plotly_chart(px.histogram(filtered_data, x=selected_x))
-    elif selected_chart == "Area Chart":
-        st.plotly_chart(px.area(filtered_data, x=selected_x, y=excluded_columns))
-    elif selected_chart == "Boxplot":
-        st.plotly_chart(px.box(filtered_data, x=selected_x, y=excluded_columns))
-    elif selected_chart == "Treemap":
-        st.plotly_chart(px.treemap(filtered_data, path=[selected_x], values="DomestikBongkar2023"))
-    elif selected_chart == "Sunburst":
-        st.plotly_chart(px.sunburst(filtered_data, path=[selected_x], values="Ekspor2023"))
+        st.plotly_chart(
+            px.scatter(melted_data, x="Tahun", y="Jumlah", color="Pelabuhan", 
+                       size="Jumlah", facet_col="Kategori", title="Distribusi Data Ekspor/Impor per Tahun")
+        )
 
     # GPT-4o Integration
     st.subheader("Analisis Data dengan GPT-4o")
