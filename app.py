@@ -28,6 +28,16 @@ if uploaded_file is not None:
     st.subheader("Tampilan Data")
     st.dataframe(df.head())
 
+    # Ensure numeric columns
+    numeric_columns = [
+        "DomestikBongkar2023", "DomestikMuat2023", "Impor2023", "Ekspor2023",
+        "DomestikBongkar2022", "DomestikMuat2022", "Impor2022", "Ekspor2022",
+        "DomestikBongkar2021", "DomestikMuat2021", "Impor2021", "Ekspor2021",
+        "DomestikBongkar2020", "DomestikMuat2020", "Impor2020", "Ekspor2020"
+    ]
+    for col in numeric_columns:
+        df[col] = pd.to_numeric(df[col], errors='coerce')
+
     # Dropdown filter options
     selected_port = st.multiselect("Pilih Pelabuhan", df["Pelabuhan"].unique(), default=df["Pelabuhan"].unique())
     selected_category = st.multiselect("Pilih Kategori", df["Kategori"].unique(), default=df["Kategori"].unique())
