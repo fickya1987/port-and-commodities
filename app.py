@@ -38,6 +38,9 @@ if uploaded_file is not None:
     for col in numeric_columns:
         df[col] = pd.to_numeric(df[col], errors='coerce')
 
+    # Drop rows where all numeric columns are NaN
+    df = df.dropna(subset=numeric_columns, how='all')
+
     # Dropdown filter options
     selected_port = st.multiselect("Pilih Pelabuhan", df["Pelabuhan"].unique(), default=df["Pelabuhan"].unique())
     selected_category = st.multiselect("Pilih Kategori", df["Kategori"].unique(), default=df["Kategori"].unique())
@@ -68,7 +71,7 @@ if uploaded_file is not None:
 
     # 4. Scatter Plot - Ekspor vs Impor
     st.plotly_chart(px.scatter(filtered_data, x="Ekspor2023", y="Impor2023", color="Kategori",
-                               size="DomestikMuat2023", title="Ekspor vs Impor"))
+                               size=filtered_data["DomestikMuat2023"].fillna(0), title="Ekspor vs Impor"))
 
     # 5. Heatmap - Korelasi Tahun ke Tahun
     st.plotly_chart(px.imshow(filtered_data.corr(), title="Korelasi Antar Kolom"))
