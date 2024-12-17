@@ -129,18 +129,19 @@ elif chart_type == "Bubble Chart":
     )
 elif chart_type == "Radar Chart":
     categories = ["DomestikBongkar2023", "DomestikMuat2023", "Impor2023", "Ekspor2023"]
-    radar_data = filtered_data[categories].sum()
+    radar_data = filtered_data.groupby('Pelabuhan')[categories].sum().reset_index()
 
     fig = go.Figure()
-    fig.add_trace(go.Scatterpolar(
-        r=radar_data.values,
-        theta=categories,
-        fill='toself',
-        name='Total Komoditas'
-    ))
+    for _, row in radar_data.iterrows():
+        fig.add_trace(go.Scatterpolar(
+            r=row[categories].values,
+            theta=categories,
+            fill='toself',
+            name=row['Pelabuhan']
+        ))
     fig.update_layout(
         polar=dict(radialaxis=dict(visible=True)),
-        title="Radar Chart Berdasarkan Kategori Data"
+        title="Radar Chart Berdasarkan Kategori Data untuk Setiap Pelabuhan"
     )
 elif chart_type == "Heatmap":
     pivot_data = filtered_data.pivot_table(index="Pelabuhan", columns="Kategori", values=y_axis, aggfunc='sum', fill_value=0)
@@ -201,3 +202,4 @@ if st.button("Analisa dengan GPT-4o"):
         st.warning("Silakan masukkan pertanyaan terlebih dahulu")
 
 st.sidebar.info("Dibuat oleh AI dengan GPT-4o untuk analisis data interaktif.")
+
