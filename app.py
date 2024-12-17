@@ -45,8 +45,16 @@ chart_type = st.sidebar.selectbox(
 )
 
 # Pilih kolom data untuk visualisasi
-x_axis = st.sidebar.selectbox("Pilih Kolom X-Axis", data.columns)
-y_axis = st.sidebar.selectbox("Pilih Kolom Y-Axis", data.columns)
+x_axis = st.sidebar.selectbox("Pilih Kolom X-Axis", ["Komoditi", "JenisKomoditi", "Kategori"])
+y_axis = st.sidebar.selectbox(
+    "Pilih Kolom Y-Axis", 
+    [
+        "DomestikBongkar2023", "DomestikMuat2023", "Impor2023", "Ekspor2023",
+        "DomestikBongkar2022", "DomestikMuat2022", "Impor2022", "Ekspor2022",
+        "DomestikBongkar2021", "DomestikMuat2021", "Impor2021", "Ekspor2021",
+        "DomestikBongkar2020", "DomestikMuat2020", "Impor2020", "Ekspor2020"
+    ]
+)
 
 # Menampilkan data
 if st.checkbox("Lihat Data Komoditas"):
@@ -57,14 +65,14 @@ st.header("Visualisasi Data")
 if chart_type == "Line Chart":
     fig = px.line(data, x=x_axis, y=y_axis, title="Line Chart")
 elif chart_type == "Bar Chart":
-    fig = px.bar(data, x=x_axis, y=y_axis, title="Bar Chart")
+    fig = px.bar(data, x=x_axis, y=y_axis, title="Bar Chart", text_auto=True)
 elif chart_type == "Scatter Plot":
     fig = px.scatter(data, x=x_axis, y=y_axis, title="Scatter Plot")
 elif chart_type == "Pie Chart":
     fig = px.pie(data, names=x_axis, values=y_axis, title="Pie Chart")
 elif chart_type == "Heatmap":
-    pivot_data = data.pivot_table(index=x_axis, columns=y_axis, aggfunc='size', fill_value=0)
-    fig = px.imshow(pivot_data, title="Heatmap")
+    heatmap_data = data[[x_axis, y_axis]].groupby(x_axis).sum().reset_index()
+    fig = px.imshow(heatmap_data.set_index(x_axis).T, title="Heatmap")
 elif chart_type == "Histogram":
     fig = px.histogram(data, x=x_axis, title="Histogram")
 elif chart_type == "Box Plot":
@@ -79,7 +87,7 @@ else:
     st.warning("Pilih tipe chart yang valid")
 
 # Tampilkan visualisasi
-st.plotly_chart(fig)
+st.plotly_chart(fig, use_container_width=True)
 
 # Fitur Analisis dengan GPT-4o
 st.header("Analisis Data Menggunakan GPT-4o")
@@ -108,3 +116,4 @@ if st.button("Analisa dengan GPT-4o"):
         st.warning("Silakan masukkan pertanyaan terlebih dahulu")
 
 st.sidebar.info("Dibuat oleh AI dengan GPT-4o untuk analisis data interaktif.")
+
