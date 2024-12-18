@@ -1,137 +1,163 @@
-import os
-import pandas as pd
 import streamlit as st
-import plotly.express as px
-from dotenv import load_dotenv
+import pandas as pd
+import os
 import openai
+import plotly.express as px
+import plotly.graph_objects as go
+from dotenv import load_dotenv
 
-# Load environment variables
+# Load API key from .env
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# Streamlit page config
-st.set_page_config(page_title="Pelabuhan Komoditas Dashboard", layout="wide")
-st.title("Visualisasi dan Analisis Komoditas Pelabuhan")
-
-# File uploader
-uploaded_file = st.file_uploader("Unggah file CSV atau Excel", type=["csv", "xlsx"])
-
-if uploaded_file is not None:
-    # Load data
-    if uploaded_file.name.endswith("csv"):
+# Upload Data File
+@st.cache_data
+def load_data(uploaded_file):
+    if uploaded_file.name.endswith('.csv'):
         df = pd.read_csv(uploaded_file)
-    else:
+    elif uploaded_file.name.endswith('.xlsx'):
         df = pd.read_excel(uploaded_file)
-    st.success("Data berhasil diunggah!")
+    else:
+        st.error("Format file tidak didukung. Silakan unggah file CSV atau Excel.")
+        return None
+    
+    # Bersihkan header kolom
+    df.columns = df.columns.str.strip()
+    
+    # Bersihkan dan konversi kolom numerik
+    for col in df.columns:
+        if df[col].dtype == 'object':  # Konversi hanya kolom object
+            try:
+                df[col] = pd.to_numeric(df[col].str.replace(',', '').str.strip(), errors='coerce')
+            except Exception as e:
+                print(f"Kolom '{col}' tidak dapat dikonversi: {e}")
+    return df
 
-    # Quick preview
-    st.subheader("Tampilan Data")
-    st.dataframe(df.head())
+# App Title
+st.title("Visualisasi dan Analisis Data Komoditas Pelabuhan")
 
-    # Exclude specific numeric columns from dropdown but still include in charts
-    excluded_columns = [
+# File Uploader
+uploaded_file = st.sidebar.file_uploader("Unggah File CSV atau Excel", type=["csv", "xlsx"])
+if uploaded_file:
+    data = load_data(uploaded_file)
+else:
+    st.warning("Harap unggah file data terlebih dahulu.")
+    st.stop()
+
+# Sidebar Menu
+st.sidebar.header("Pengaturan Visualisasi")
+
+# Pilihan Pelabuhan, JenisKomoditi, dan Kategori
+pelabuhan_filter = st.sidebar.multiselect(
+    "Filter Pelabuhan",
+    options=data['Pelabuhan'].dropna().unique(),
+    default=data['Pelabuhan'].dropna().unique()
+)
+jenis_komoditi_filter = st.sidebar.multiselect(
+    "Filter Jenis Komoditi",
+    options=data['JenisKomoditi'].dropna().unique(),
+    default=data['JenisKomoditi'].dropna().unique()
+)
+kategori_filter = st.sidebar.multiselect(
+    "Filter Kategori",
+    options=data['Kategori'].dropna().unique(),
+    default=data['Kategori'].dropna().unique()
+)
+
+# Filter Data
+filtered_data = data[
+    (data['Pelabuhan'].isin(pelabuhan_filter)) &
+    (data['JenisKomoditi'].isin(jenis_komoditi_filter)) &
+    (data['Kategori'].isin(kategori_filter))
+]
+
+# Dropdown pilihan untuk jenis visualisasi
+chart_type = st.sidebar.selectbox(
+    "Pilih Jenis Visualisasi", 
+    [
+        "Bar Chart", "Line Chart", "Pie Chart", "Treemap", "Bubble Chart", "Heatmap", "Sunburst Chart", "Radar Chart"
+    ]
+)
+
+# Pilih kolom data untuk visualisasi
+y_axis = st.sidebar.selectbox(
+    "Pilih Kolom Y-Axis", 
+    [
         "DomestikBongkar2023", "DomestikMuat2023", "Impor2023", "Ekspor2023",
         "DomestikBongkar2022", "DomestikMuat2022", "Impor2022", "Ekspor2022",
         "DomestikBongkar2021", "DomestikMuat2021", "Impor2021", "Ekspor2021",
         "DomestikBongkar2020", "DomestikMuat2020", "Impor2020", "Ekspor2020"
     ]
-    selectable_columns = [col for col in df.columns if col not in excluded_columns]
+)
 
-    # Convert all non-numeric columns to string
-    for col in df.select_dtypes(exclude=['number']).columns:
-        df[col] = df[col].astype(str)
+# Menampilkan data
+if st.checkbox("Lihat Data Komoditas"):
+    st.write(filtered_data)
 
-    # Ensure numeric columns dynamically
-    non_numeric_columns = df[selectable_columns].select_dtypes(exclude=['number']).columns.tolist()
-    numeric_columns = df[selectable_columns].select_dtypes(include=['number']).columns.tolist()
-
-    for col in numeric_columns:
-        df[col] = pd.to_numeric(df[col], errors='coerce')
-
-    # Dropdown for choosing columns dynamically
-    selected_chart = st.selectbox(
-        "Pilih Jenis Chart",
-        [
-            "Bar Chart", "Line Chart", "Scatter Plot"
-        ]
+# Visualisasi Data
+st.header("Visualisasi Data")
+if chart_type == "Bar Chart":
+    fig = px.bar(
+        filtered_data, 
+        x="Komoditi", 
+        y=y_axis, 
+        color="Pelabuhan", 
+        barmode="group", 
+        title="Bar Chart Berdasarkan Pelabuhan dan Kategori",
+        text_auto=True
     )
+elif chart_type == "Radar Chart":
+    categories = ["DomestikBongkar2023", "DomestikMuat2023", "Impor2023", "Ekspor2023"]
+    radar_data = filtered_data.groupby('Pelabuhan')[categories].mean().reset_index()
 
-    # Filters
-    st.subheader("Filter Data")
-    selected_pelabuhan = st.multiselect("Pilih Pelabuhan", df['Pelabuhan'].unique(), default=df['Pelabuhan'].unique())
-    selected_jenis = st.multiselect("Pilih Jenis Komoditas", df['JenisKomoditi'].unique(), default=df['JenisKomoditi'].unique())
-    selected_kategori = st.multiselect("Pilih Kategori", df['Kategori'].unique(), default=df['Kategori'].unique())
-    selected_komoditi = st.multiselect("Pilih Komoditi", df['Komoditi'].unique(), default=df['Komoditi'].unique())
+    fig = go.Figure()
+    for _, row in radar_data.iterrows():
+        fig.add_trace(go.Scatterpolar(
+            r=row[categories].values,
+            theta=categories,
+            fill='toself',
+            name=row['Pelabuhan']
+        ))
+    fig.update_layout(
+        polar=dict(radialaxis=dict(visible=True, range=[0, radar_data[categories].max().max()])),
+        title="Radar Chart Berdasarkan Kategori Data untuk Setiap Pelabuhan"
+    )
+elif chart_type == "Heatmap":
+    heatmap_data = filtered_data.pivot_table(index="Pelabuhan", columns="Kategori", values=y_axis, aggfunc='sum', fill_value=0)
+    fig = px.imshow(heatmap_data, title="Heatmap Berdasarkan Pelabuhan dan Kategori")
+elif chart_type == "Treemap":
+    fig = px.treemap(
+        filtered_data, 
+        path=["Pelabuhan", "Kategori", "JenisKomoditi", "Komoditi"], 
+        values=y_axis, 
+        title="Treemap Berdasarkan Pelabuhan, Kategori, dan Jenis Komoditi"
+    )
+elif chart_type == "Bubble Chart":
+    fig = px.scatter(
+        filtered_data, 
+        x="Komoditi", 
+        y=y_axis, 
+        size=y_axis, 
+        color="Pelabuhan", 
+        hover_data=["Kategori"],
+        facet_col="Pelabuhan",
+        facet_col_wrap=4,
+        facet_col_spacing=0.02,
+        title="Bubble Chart Berdasarkan Pelabuhan dan Kategori"
+    )
+elif chart_type == "Sunburst Chart":
+    fig = px.sunburst(
+        filtered_data, 
+        path=["Pelabuhan", "Kategori", "JenisKomoditi", "Komoditi"], 
+        values=y_axis, 
+        title="Sunburst Chart Berdasarkan Pelabuhan dan Kategori"
+    )
+else:
+    st.warning("Pilih tipe chart yang valid")
 
-    filtered_data = df[(df['Pelabuhan'].isin(selected_pelabuhan)) &
-                       (df['JenisKomoditi'].isin(selected_jenis)) &
-                       (df['Kategori'].isin(selected_kategori)) &
-                       (df['Komoditi'].isin(selected_komoditi))]
+# Tampilkan visualisasi
+if 'fig' in locals():
+    st.plotly_chart(fig, use_container_width=True)
+else:
+    st.warning("Visualisasi tidak dapat ditampilkan. Silakan periksa pengaturan Anda.")
 
-    st.subheader("Data Terfilter")
-    st.dataframe(filtered_data)
-
-    # Prepare long-format data for comparison
-    columns_to_melt = [
-        "DomestikBongkar2023", "DomestikMuat2023", "Impor2023", "Ekspor2023",
-        "DomestikBongkar2022", "DomestikMuat2022", "Impor2022", "Ekspor2022",
-        "DomestikBongkar2021", "DomestikMuat2021", "Impor2021", "Ekspor2021",
-        "DomestikBongkar2020", "DomestikMuat2020", "Impor2020", "Ekspor2020"
-    ]
-
-    melted_data = filtered_data.melt(id_vars=['Pelabuhan', 'JenisKomoditi', 'Kategori', 'Komoditi'], 
-                                     value_vars=columns_to_melt, 
-                                     var_name='Tahun', value_name='Jumlah')
-
-    # Clean year column
-    melted_data['Tahun'] = melted_data['Tahun'].str.extract('(\\d{4})')
-
-    # Chart visualizations
-    st.subheader("Visualisasi Data")
-    if selected_chart == "Bar Chart":
-        st.plotly_chart(
-            px.bar(melted_data, x="Tahun", y="Jumlah", color="Pelabuhan", 
-                   facet_col="Komoditi", title="Perbandingan Data Ekspor/Impor dari 2020-2023")
-        )
-    elif selected_chart == "Line Chart":
-        st.plotly_chart(
-            px.line(melted_data, x="Tahun", y="Jumlah", color="Pelabuhan", 
-                    line_group="Komoditi", title="Tren Data Ekspor/Impor dari 2020-2023")
-        )
-    elif selected_chart == "Scatter Plot":
-        st.plotly_chart(
-            px.scatter(melted_data, x="Tahun", y="Jumlah", color="Pelabuhan", 
-                       size="Jumlah", facet_col="Komoditi", title="Distribusi Data Ekspor/Impor per Tahun")
-        )
-
-    # GPT-4o Integration
-    st.subheader("Analisis Data dengan GPT-4o")
-    st.write("### AI Data Analysis")
-    analysis_type = st.radio("Pilih jenis analisis:", ["Analisis Berdasarkan Data", "Pencarian Detail GPT-4o"])
-    analysis_query = st.text_area("Deskripsi analisis atau detail pencarian:")
-    if st.button("Generate AI Analysis") and analysis_query:
-        try:
-            if analysis_type == "Analisis Berdasarkan Data":
-                prompt = (
-                    f"Berdasarkan dataset berikut, lakukan analisis mendalam tentang '{analysis_query}'.Gunakan bahasa Indonesia.Fokuskan analisis pada tren ekspor dan peluang untuk Indonesia:\n"
-                    + filtered_data.to_csv(index=False)
-                )
-            else:
-                prompt = (
-                    f"Cari informasi lengkap tentang '{analysis_query}' yang relevan dengan data ekspor Indonesia. Tambahkan referensi sumber terpercaya."
-                )
-
-            response = openai.ChatCompletion.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": "Anda adalah analis data berpengalaman. Gunakan bahasa Indonesia"},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=2048,
-                temperature=1.0
-            )
-            result = response['choices'][0]['message']['content']
-            st.write("#### Hasil Analisis AI:")
-            st.write(result)
-        except Exception as e:
-            st.error(f"Error generating analysis: {e}")
