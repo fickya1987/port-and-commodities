@@ -24,33 +24,26 @@ if uploaded_file is not None:
         df = pd.read_excel(uploaded_file)
     st.success("Data berhasil diunggah!")
 
+    # Clean column names
+    df.columns = df.columns.str.strip()
+
+    # Ensure numeric columns are cleaned and converted
+    for col in df.columns:
+        if df[col].dtype == 'object':  # Only convert object columns
+            df[col] = pd.to_numeric(df[col].str.replace(',', '').str.strip(), errors='coerce')
+
+    # Separate numeric and non-numeric columns
+    numeric_columns = df.select_dtypes(include='number').columns.tolist()
+    non_numeric_columns = df.select_dtypes(exclude='number').columns.tolist()
+
     # Quick preview
     st.subheader("Tampilan Data")
     st.dataframe(df.head())
 
-    # Exclude specific numeric columns from dropdown but still include in charts
-    excluded_columns = [
-        "DomestikBongkar2023", "DomestikMuat2023", "Impor2023", "Ekspor2023",
-        "DomestikBongkar2022", "DomestikMuat2022", "Impor2022", "Ekspor2022",
-        "DomestikBongkar2021", "DomestikMuat2021", "Impor2021", "Ekspor2021",
-        "DomestikBongkar2020", "DomestikMuat2020", "Impor2020", "Ekspor2020"
-    ]
-    selectable_columns = [col for col in df.columns if col not in excluded_columns]
-
-    # Convert all non-numeric columns to string
-    for col in df.select_dtypes(exclude=['number']).columns:
-        df[col] = df[col].astype(str)
-
-    # Ensure numeric columns dynamically
-    non_numeric_columns = df[selectable_columns].select_dtypes(exclude=['number']).columns.tolist()
-    numeric_columns = df[selectable_columns].select_dtypes(include=['number']).columns.tolist()
-
-    for col in numeric_columns:
-        df[col] = pd.to_numeric(df[col], errors='coerce')
-
     # Dropdown for choosing columns dynamically
-    selected_x = st.selectbox("Pilih Kolom X", options=df.columns)
-    selected_y = st.selectbox("Pilih Kolom Y", options=df.columns)
+    selected_x = st.selectbox("Pilih Kolom X", options=non_numeric_columns + numeric_columns)
+    selected_y = st.selectbox("Pilih Kolom Y", options=numeric_columns)
+
     selected_chart = st.selectbox(
         "Pilih Jenis Chart",
         [
@@ -76,51 +69,38 @@ if uploaded_file is not None:
 
     # Chart visualizations
     st.subheader("Visualisasi Data")
-
     if selected_chart == "Bar Chart":
-        st.plotly_chart(
-            px.bar(filtered_data, x=selected_x, y=excluded_columns, barmode="group")
-        )
+        st.plotly_chart(px.bar(filtered_data, x=selected_x, y=selected_y, barmode="group"))
     elif selected_chart == "Pie Chart":
-        st.plotly_chart(px.pie(filtered_data, names=selected_x, title=f"Distribusi {selected_x}"))
+        st.plotly_chart(px.pie(filtered_data, names=selected_x, values=selected_y))
     elif selected_chart == "Line Chart":
-        st.plotly_chart(px.line(filtered_data, x=selected_x, y=excluded_columns))
+        st.plotly_chart(px.line(filtered_data, x=selected_x, y=selected_y))
     elif selected_chart == "Scatter Plot":
-        st.plotly_chart(px.scatter(filtered_data, x=selected_x, y=selected_y))
+        st.plotly_chart(px.scatter(filtered_data, x=selected_x, y=selected_y, size=selected_y))
     elif selected_chart == "Heatmap":
-        st.plotly_chart(px.imshow(filtered_data[excluded_columns].corr()))
+        st.plotly_chart(px.imshow(filtered_data[numeric_columns].corr()))
     elif selected_chart == "Histogram":
         st.plotly_chart(px.histogram(filtered_data, x=selected_x))
     elif selected_chart == "Area Chart":
-        st.plotly_chart(px.area(filtered_data, x=selected_x, y=excluded_columns))
+        st.plotly_chart(px.area(filtered_data, x=selected_x, y=selected_y))
     elif selected_chart == "Boxplot":
-        st.plotly_chart(px.box(filtered_data, x=selected_x, y=excluded_columns))
+        st.plotly_chart(px.box(filtered_data, x=selected_x, y=selected_y))
     elif selected_chart == "Treemap":
-        st.plotly_chart(px.treemap(filtered_data, path=[selected_x], values="DomestikBongkar2023"))
+        st.plotly_chart(px.treemap(filtered_data, path=[selected_x], values=selected_y))
     elif selected_chart == "Sunburst":
-        st.plotly_chart(px.sunburst(filtered_data, path=[selected_x], values="Ekspor2023"))
+        st.plotly_chart(px.sunburst(filtered_data, path=[selected_x], values=selected_y))
 
     # GPT-4o Integration
     st.subheader("Analisis Data dengan GPT-4o")
-    st.write("### AI Data Analysis")
-    analysis_type = st.radio("Pilih jenis analisis:", ["Analisis Berdasarkan Data", "Pencarian Detail GPT-4o"])
     analysis_query = st.text_area("Deskripsi analisis atau detail pencarian:")
     if st.button("Generate AI Analysis") and analysis_query:
         try:
-            if analysis_type == "Analisis Berdasarkan Data":
-                prompt = (
-                    f"Berdasarkan dataset berikut, lakukan analisis mendalam tentang '{analysis_query}'.Gunakan bahasa Indonesia.Fokuskan analisis pada tren ekspor dan peluang untuk Indonesia:\n"
-                    + filtered_data.to_csv(index=False)
-                )
-            else:
-                prompt = (
-                    f"Cari informasi lengkap tentang '{analysis_query}' yang relevan dengan data ekspor Indonesia. Tambahkan referensi sumber terpercaya."
-                )
+            prompt = f"Lakukan analisis mendalam tentang '{analysis_query}' berdasarkan data berikut:\n{filtered_data.to_csv(index=False)}"
 
             response = openai.ChatCompletion.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": "Anda adalah analis data berpengalaman. Gunakan bahasa Indonesia"},
+                    {"role": "system", "content": "Anda adalah analis data berpengalaman. Gunakan bahasa Indonesia."},
                     {"role": "user", "content": prompt}
                 ],
                 max_tokens=2048,
