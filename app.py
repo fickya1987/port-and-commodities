@@ -18,27 +18,31 @@ uploaded_file = st.file_uploader("Unggah file CSV atau Excel", type=["csv", "xls
 
 if uploaded_file is not None:
     # Load data
-    if uploaded_file.name.endswith("csv"):
-        df = pd.read_csv(uploaded_file, skip_blank_lines=True)
-    else:
-        df = pd.read_excel(uploaded_file)
+    try:
+        if uploaded_file.name.endswith("csv"):
+            df = pd.read_csv(uploaded_file, skip_blank_lines=True)
+        else:
+            df = pd.read_excel(uploaded_file)
 
-    # Bersihkan header kolom
-    df.columns = df.columns.str.strip()
+        # Bersihkan header kolom
+        df.columns = df.columns.str.strip()
 
-    # Bersihkan data: Hapus baris kosong atau kolom yang berisi None
-    df = df.dropna(how="all")  # Hapus baris kosong sepenuhnya
-    df = df.dropna(axis=1, how="all")  # Hapus kolom kosong sepenuhnya
+        # Bersihkan data: Hapus baris kosong atau kolom yang berisi None
+        df = df.dropna(how="all")  # Hapus baris kosong sepenuhnya
+        df = df.dropna(axis=1, how="all")  # Hapus kolom kosong sepenuhnya
 
-    # Ubah kolom object ke numerik jika mungkin
-    for col in df.columns:
-        if df[col].dtype == 'object':
-            df[col] = pd.to_numeric(df[col].str.replace(',', '').str.strip(), errors='ignore')
+        # Ubah kolom object ke numerik jika mungkin
+        for col in df.columns:
+            if df[col].dtype == 'object':
+                df[col] = pd.to_numeric(df[col].str.replace(',', '').str.strip(), errors='ignore')
 
-    st.success("Data berhasil diunggah!")
-    st.dataframe(df.head())  # Tampilkan data hasil pembersihan
+        st.success("Data berhasil diunggah!")
+        st.dataframe(df.head())  # Tampilkan data hasil pembersihan
+    except Exception as e:
+        st.error(f"Terjadi kesalahan saat membaca file: {e}")
 else:
-    st.error("Tidak ada file yang diunggah. Silakan unggah file CSV atau Excel.")
+    st.warning("Tidak ada file yang diunggah. Silakan unggah file CSV atau Excel.")
+
 
 
     # Clean column names
