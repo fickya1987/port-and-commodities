@@ -100,7 +100,7 @@ if uploaded_file is not None:
         analysis_query = st.text_area("Deskripsi analisis atau detail pencarian:")
         analysis_type = st.radio("Pilih Jenis Analisis GPT-4o:", ["Analisis Berdasarkan Data", "Pencarian Global GPT-4o"])
 
-        if st.button("Generate AI Analysis") and analysis_query:
+        if st.button("Generate Pelindo AI") and analysis_query:
             try:
                 if analysis_type == "Analisis Berdasarkan Data":
                     # Analisis berdasarkan data
@@ -130,7 +130,7 @@ if uploaded_file is not None:
                         temperature=1.0
                     )
                     result_search = response_search['choices'][0]['message']['content']
-                    st.write("#### Hasil Pencarian Global GPT-4o:")
+                    st.write("#### Hasil Pencarian Global Pelindo:")
                     st.write(result_search)
             except Exception as e:
                 st.error(f"Error generating analysis: {e}")
