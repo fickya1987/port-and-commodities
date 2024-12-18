@@ -96,9 +96,9 @@ if uploaded_file is not None:
             st.plotly_chart(px.sunburst(filtered_data, path=[selected_x], values=selected_y))
 
         # GPT-4o Integration for Analysis
-        st.subheader("Analisis Data dengan GPT-4o")
+        st.subheader("Analisis Data dengan Pelindo AI")
         analysis_query = st.text_area("Deskripsi analisis atau detail pencarian:")
-        analysis_type = st.radio("Pilih Jenis Analisis GPT-4o:", ["Analisis Berdasarkan Data", "Pencarian Global GPT-4o"])
+        analysis_type = st.radio("Pilih Jenis Analisis Pelindo AI:", ["Analisis Berdasarkan Data", "Pencarian Global Search Pelindo AI"])
 
         if st.button("Generate Pelindo AI") and analysis_query:
             try:
