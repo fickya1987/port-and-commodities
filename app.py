@@ -95,44 +95,43 @@ if uploaded_file is not None:
         elif selected_chart == "Sunburst":
             st.plotly_chart(px.sunburst(filtered_data, path=[selected_x], values=selected_y))
 
-
-  # GPT-4o Integration for Analysis
-        st.subheader("Analisis Data dengan Pelindo AI")
+        # GPT-4o Integration for Analysis
+        st.subheader("Analisis Data dengan GPT-4o")
         analysis_query = st.text_area("Deskripsi analisis atau detail pencarian:")
-        if st.button("Pelindo AI") and analysis_query:
+        analysis_type = st.radio("Pilih Jenis Analisis GPT-4o:", ["Analisis Berdasarkan Data", "Pencarian Global GPT-4o"])
+
+        if st.button("Generate AI Analysis") and analysis_query:
             try:
-                # Analisis berdasarkan data
-                prompt_data = f"Lakukan analisis mendalam tentang '{analysis_query}' berdasarkan data berikut:\n{filtered_data.to_csv(index=False)}"
-                response_data = openai.ChatCompletion.create(
-                    model="gpt-4o",
-                    messages=[
-                        {"role": "system", "content": "Anda adalah analis data berpengalaman. Gunakan bahasa Indonesia."},
-                        {"role": "user", "content": prompt_data}
-                    ],
-                    max_tokens=2048,
-                    temperature=1.0
-                )
-                result_data = response_data['choices'][0]['message']['content']
-
-                # Pencarian global GPT-4o
-                prompt_search = f"Lakukan pencarian mendalam tentang '{analysis_query}' menggunakan pengetahuan global Anda."
-                response_search = openai.ChatCompletion.create(
-                    model="gpt-4o",
-                    messages=[
-                        {"role": "system", "content": "Anda adalah mesin pencari pintar. Gunakan bahasa Indonesia."},
-                        {"role": "user", "content": prompt_search}
-                    ],
-                    max_tokens=2048,
-                    temperature=1.0
-                )
-                result_search = response_search['choices'][0]['message']['content']
-
-                # Tampilkan hasil analisis
-                st.write("#### Hasil Analisis Berdasarkan Data:")
-                st.write(result_data)
-
-                st.write("#### Hasil Pencarian GPT-4o:")
-                st.write(result_search)
+                if analysis_type == "Analisis Berdasarkan Data":
+                    # Analisis berdasarkan data
+                    prompt_data = f"Lakukan analisis mendalam tentang '{analysis_query}' berdasarkan data berikut:\n{filtered_data.to_csv(index=False)}"
+                    response_data = openai.ChatCompletion.create(
+                        model="gpt-4o",
+                        messages=[
+                            {"role": "system", "content": "Anda adalah analis data berpengalaman. Gunakan bahasa Indonesia."},
+                            {"role": "user", "content": prompt_data}
+                        ],
+                        max_tokens=2048,
+                        temperature=1.0
+                    )
+                    result_data = response_data['choices'][0]['message']['content']
+                    st.write("#### Hasil Analisis Berdasarkan Data:")
+                    st.write(result_data)
+                else:
+                    # Pencarian global GPT-4o
+                    prompt_search = f"Lakukan pencarian mendalam tentang '{analysis_query}' menggunakan pengetahuan global Anda."
+                    response_search = openai.ChatCompletion.create(
+                        model="gpt-4o",
+                        messages=[
+                            {"role": "system", "content": "Anda adalah mesin pencari pintar. Gunakan bahasa Indonesia."},
+                            {"role": "user", "content": prompt_search}
+                        ],
+                        max_tokens=2048,
+                        temperature=1.0
+                    )
+                    result_search = response_search['choices'][0]['message']['content']
+                    st.write("#### Hasil Pencarian Global GPT-4o:")
+                    st.write(result_search)
             except Exception as e:
                 st.error(f"Error generating analysis: {e}")
 
@@ -140,3 +139,4 @@ if uploaded_file is not None:
         st.error(f"Terjadi kesalahan saat membaca file: {e}")
 else:
     st.warning("Tidak ada file yang diunggah. Silakan unggah file CSV atau Excel.")
+
